@@ -82,12 +82,11 @@ class Game:
         # and center it to the window screen
         res_screen_rect = resized_screen.get_rect()
         res_screen_rect.center = self.app_screen_rect.center
-        
-        self.app_screen.fill(pg.Color('black'))
+
         self.app_screen.blit(resized_screen, res_screen_rect)
         
         pg.display.set_caption(f'{resized_screen}')
-        pg.display.update()
+        pg.display.update(res_screen_rect)
         
         
     def run(self):
