@@ -10,7 +10,7 @@ WINDOW_H = 768
 GAME_SCREEN_W = 256
 GAME_SCREEN_H = 240
 
-# if the game screen gets resized to the same aspect ratio as the window 
+# whether the game screen gets resized to the same aspect ratio as the window 
 WINDOW_STRETCHED = False 
 
 # additional screen flags
@@ -34,11 +34,10 @@ class Game:
         self.game_screen_rect = self.game_screen.get_rect()
         
         self.clock = pg.time.Clock()
-        #self.fps = 30
         
         self.all_sprites = pg.sprite.Group()
         
-        # instantiate a player object
+        # instantiate a player object for testing
         Player(self, (32, 32))
 
     
