@@ -71,14 +71,27 @@ class Game:
             # scale the game screen to the window size
             resized_screen = pg.transform.scale(self.game_screen, self.app_screen_rect.size)
         else:
-            # check if the window size is wider or higher than the game screen
-            if self.game_screen_rect.w < self.app_screen_rect.w:
-                width = int(self.app_screen_rect.h / self.game_screen_rect.h 
+            # compare aspect ratios
+            game_ratio = self.game_screen_rect.w / self.game_screen_rect.h
+            app_ratio = self.app_screen_rect.w / self.app_screen_rect.h
+
+            if game_ratio < app_ratio:
+                if self.game_screen_rect.h >= self.app_screen_rect.h:
+                    width = int(self.app_screen_rect.h / self.game_screen_rect.h 
                             * self.game_screen_rect.w)
-                height = self.app_screen_rect.h
-            elif self.game_screen_rect.h < self.app_screen_rect.h:
-                width = self.app_screen_rect.w
-                height = int(self.app_screen_rect.w / self.game_screen_rect.w
+                    height = self.app_screen_rect.h
+                else:
+                    width = int(self.app_screen_rect.h / self.game_screen_rect.h 
+                            * self.game_screen_rect.w)
+                    height = self.app_screen_rect.h
+            else:
+                if self.game_screen_rect.h < self.app_screen_rect.h:
+                    width = self.app_screen_rect.w
+                    height = int(self.app_screen_rect.w / self.game_screen_rect.w
+                             * self.game_screen_rect.h)
+                else:
+                    width = self.app_screen_rect.w
+                    height = int(self.app_screen_rect.w / self.game_screen_rect.w
                              * self.game_screen_rect.h)
             resized_screen = pg.transform.scale(self.game_screen, 
                                                 (width, height))
@@ -92,6 +105,7 @@ class Game:
         
         fps = self.clock.get_fps()
         pg.display.set_caption(f'{round(fps,2)}')
+
         pg.display.update(res_screen_rect)
         
         
