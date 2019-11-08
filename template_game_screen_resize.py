@@ -10,7 +10,7 @@ WINDOW_H = 768
 GAME_SCREEN_W = 256
 GAME_SCREEN_H = 240
 
-# whether the game screen gets resized to the same aspect ratio as the window 
+# if the game screen gets resized to the same aspect ratio as the window 
 WINDOW_STRETCHED = False 
 
 # additional screen flags
@@ -34,10 +34,11 @@ class Game:
         self.game_screen_rect = self.game_screen.get_rect()
         
         self.clock = pg.time.Clock()
+        #self.fps = 30
         
         self.all_sprites = pg.sprite.Group()
         
-        # instantiate a player object for testing
+        # instantiate a player object
         Player(self, (32, 32))
 
     
@@ -75,23 +76,13 @@ class Game:
             app_ratio = self.app_screen_rect.w / self.app_screen_rect.h
 
             if game_ratio < app_ratio:
-                if self.game_screen_rect.h >= self.app_screen_rect.h:
-                    width = int(self.app_screen_rect.h / self.game_screen_rect.h 
-                            * self.game_screen_rect.w)
-                    height = self.app_screen_rect.h
-                else:
-                    width = int(self.app_screen_rect.h / self.game_screen_rect.h 
-                            * self.game_screen_rect.w)
-                    height = self.app_screen_rect.h
+                width = int(self.app_screen_rect.h / self.game_screen_rect.h 
+                        * self.game_screen_rect.w)
+                height = self.app_screen_rect.h
             else:
-                if self.game_screen_rect.h < self.app_screen_rect.h:
-                    width = self.app_screen_rect.w
-                    height = int(self.app_screen_rect.w / self.game_screen_rect.w
-                             * self.game_screen_rect.h)
-                else:
-                    width = self.app_screen_rect.w
-                    height = int(self.app_screen_rect.w / self.game_screen_rect.w
-                             * self.game_screen_rect.h)
+                width = self.app_screen_rect.w
+                height = int(self.app_screen_rect.w / self.game_screen_rect.w
+                         * self.game_screen_rect.h)
             resized_screen = pg.transform.scale(self.game_screen, 
                                                 (width, height))
         
