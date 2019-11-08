@@ -34,7 +34,7 @@ class Game:
         self.game_screen_rect = self.game_screen.get_rect()
         
         self.clock = pg.time.Clock()
-        self.fps = 30
+        #self.fps = 30
         
         self.all_sprites = pg.sprite.Group()
         
@@ -71,12 +71,17 @@ class Game:
             # scale the game screen to the window size
             resized_screen = pg.transform.scale(self.game_screen, self.app_screen_rect.size)
         else:
-            # scale only the game screen height to window size and calculate
-            # the new width based on the aspect ratio
-            width = int(self.app_screen_rect.h / self.game_screen_rect.h 
-                        * self.game_screen_rect.w)
+            # check if the window size is wider or higher than the game screen
+            if self.game_screen_rect.w < self.app_screen_rect.w:
+                width = int(self.app_screen_rect.h / self.game_screen_rect.h 
+                            * self.game_screen_rect.w)
+                height = self.app_screen_rect.h
+            elif self.game_screen_rect.h < self.app_screen_rect.h:
+                width = self.app_screen_rect.w
+                height = int(self.app_screen_rect.w / self.game_screen_rect.w
+                             * self.game_screen_rect.h)
             resized_screen = pg.transform.scale(self.game_screen, 
-                                                (width, self.app_screen_rect.h))
+                                                (width, height))
         
         # get the rect of the resized screen for blitting
         # and center it to the window screen
@@ -85,14 +90,15 @@ class Game:
 
         self.app_screen.blit(resized_screen, res_screen_rect)
         
-        pg.display.set_caption(f'{resized_screen}')
+        fps = self.clock.get_fps()
+        pg.display.set_caption(f'{round(fps,2)}')
         pg.display.update(res_screen_rect)
         
         
     def run(self):
         self.running = True
         while self.running:
-            delta_time = self.clock.tick(self.fps) / 1000
+            delta_time = self.clock.tick() / 1000
             self.events()        
             self.update(delta_time)
             self.draw()
