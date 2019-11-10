@@ -1,4 +1,12 @@
+'''
+Zoria tileset by DragonDePlatino
+https://opengameart.org/content/zoria-tileset
+https://creativecommons.org/licenses/by/4.0/#
+
+'''
+
 import pygame as pg
+import pygame.freetype
 import traceback
 
 vec = pg.math.Vector2
@@ -10,23 +18,22 @@ WINDOW_H = 768
 GAME_SCREEN_W = 256
 GAME_SCREEN_H = 240
 
-# if the game screen gets resized to the same aspect ratio as the window 
-WINDOW_STRETCHED = False 
-
-# additional screen flags
-FLAGS = [
-        #pg.FULLSCREEN,
-        pg.RESIZABLE
-        ]
 
 
 class Game:
     def __init__(self):
         pg.init()
         
+        self.flags = (
+                pg.RESIZABLE |
+                pg.DOUBLEBUF
+                )
+        # whether the game screen gets resized to the same aspect ratio as the window 
+        self.window_stretched = False
+        
         # application window surface
         self.app_screen = pg.display.set_mode((WINDOW_W, WINDOW_H),
-                                              *FLAGS)
+                                              self.flags)
         self.app_screen_rect = self.app_screen.get_rect()
         
         # game screen surface (where all the ingame stuff gets blitted on)
@@ -38,9 +45,34 @@ class Game:
         
         self.all_sprites = pg.sprite.Group()
         
-        # instantiate a player object
-        Player(self, (32, 32))
+        try:
+            self.bg_image = pg.image.load('assets/zoria_mockup.png').convert()
+        except pygame.error:
+            # create dummy image
+            self.bg_image = pg.Surface(self.game_screen_rect.size)
+            self.bg_image.fill(pg.Color('black'))
+            
+            pg.draw.rect(self.bg_image, pg.Color('green'), 
+                         pg.Rect(0, 64, self.game_screen_rect.w,
+                                 self.game_screen_rect.h - 64))
+            
+            for y in range(0, self.game_screen_rect.h - 64, 16):
+                for x in range(0, self.game_screen_rect.w, 32):
+                    r = pg.Rect(x + y % 32, 64 + y, 16, 16)
+                    pg.draw.rect(self.bg_image, pg.Color('red'), r)
+        
+        font = pygame.freetype.Font(None, 12)
+        for i, s in enumerate(['S: Toggle window stretching', 
+                               'F: Toggle full screen',
+                               'R: Make screen resizable']):
+            txt, rect = font.render(s, fgcolor=pg.Color('White'), bgcolor=None)
 
+            #rect.center = self.game_screen_rect.center
+            rect.x = 2
+            rect.y = 8 + i * 16
+
+            self.bg_image.blit(txt, rect)
+            
     
     def events(self):
         for event in pg.event.get():
@@ -49,25 +81,37 @@ class Game:
             elif event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
                     self.running = False
+                elif event.key == pg.K_s:
+                    self.window_stretched = not self.window_stretched
+                    self.reset_app_screen(self.app_screen_rect.size)
+                elif event.key == pg.K_f:
+                    # toggle fullscreen
+                    self.flags = self.flags^pg.FULLSCREEN
+                    self.reset_app_screen(self.app_screen_rect.size)
+                elif event.key == pg.K_r:
+                    # toggle fullscreen
+                    self.flags = self.flags^pg.RESIZABLE
+                    self.reset_app_screen(self.app_screen_rect.size)
             elif event.type == pg.VIDEORESIZE:
                 # if the user resizes the window (drag the bottom right corner)
                 # get the new size from the event dict and reset the 
                 # window screen surface
-                self.app_screen = pg.display.set_mode(event.dict['size'],
-                                                      *FLAGS)
-                self.app_screen_rect = self.app_screen.get_rect()
-                pg.display.update()
+                self.reset_app_screen(event.dict['size'])
+    
+    def reset_app_screen(self, size):
+        self.app_screen = pg.display.set_mode(size, self.flags)
+        self.app_screen_rect = self.app_screen.get_rect()
+        pg.display.update()
     
     
     def update(self, dt):
-        self.all_sprites.update(dt)
+        pass
 
     
     def draw(self):
-        self.game_screen.fill(pg.Color('green'))
-        self.all_sprites.draw(self.game_screen)
+        self.game_screen.blit(self.bg_image, (0, 0))
 
-        if WINDOW_STRETCHED:
+        if self.window_stretched:
             # scale the game screen to the window size
             resized_screen = pg.transform.scale(self.game_screen, self.app_screen_rect.size)
         else:
@@ -108,28 +152,7 @@ class Game:
             self.draw()
         
         pg.quit()
-    
 
-
-class Player(pg.sprite.Sprite):
-    def __init__(self, game, pos):
-        super().__init__(game.all_sprites)
-        self.image = pg.Surface((16, 16))
-        self.image.fill(pg.Color('blue'))
-        self.rect = self.image.get_rect()
-        self.pos = vec(pos)
-        self.rect.center = pos
-        self.speed = 50
-    
-    
-    def update(self, dt):
-        # make the player controllable with the arrow keys
-        keys = pg.key.get_pressed()
-        move = vec()
-        move.x = (keys[pg.K_RIGHT] - keys[pg.K_LEFT]) * self.speed * dt
-        move.y = (keys[pg.K_DOWN] - keys[pg.K_UP]) * self.speed * dt
-        self.pos += move
-        self.rect.center = self.pos
 
 
 
