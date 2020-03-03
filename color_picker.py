@@ -2,25 +2,57 @@ import pygame as pg
 import pygame.freetype
 import traceback
 
+#import warnings
+#warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 
 vec = pg.math.Vector2
 
-def constrain(n, low, high):
-    return max(min(n, high), low)
+
+
+def constrain(number, low, high):
+    """Constrains a value to the given boundaries
+
+    Args:
+        number (int or float)
+        low (int or float)
+        high (int or float)
+        
+    Returns:
+        int or float
+    """
+    return max(min(number, high), low)
 
 
 def rgb_to_hex(color):
-    return '#{:02x}{:02x}{:02x}'.format(*color).upper()
+    """Converts a RGB tuple or list to a hexadecimal representation
+
+    Args:
+        color (tuple, list or pygame.Color object): RGB value
+
+    Returns:
+        str: color in hexadecimal
+    """
+    return '{:02x}{:02x}{:02x}'.format(*color).upper()
+
 
 
 class ColorPicker(pg.sprite.Sprite):
+    """Base sprite displayed when the user is prompted to specify a color.
+    
+    """
     def __init__(self, game, groups):
+        """
+        Args:
+            game (Game): instance of a Game object
+            groups (pygame.sprite.Group)
+        """
         super().__init__(groups)
         self.game = game
         self.rect = game.screen_rect.copy()
         self.image = pg.Surface(self.rect.size)
         
-        # initialize sliders
+        # initialize the RGB color sliders
         slider_positions = (
             (self.rect.centerx, 200),
             (self.rect.centerx, 300),
@@ -32,48 +64,64 @@ class ColorPicker(pg.sprite.Sprite):
             Slider(game, groups, slider_positions[2], 'Blue')
         ]
         
-        self.color_value = [0, 0, 0]
+        self.color_value = [0, 0, 0]  # [R, G, B]
+        # create a surface that visualized the chosen color
         self.color_test = pg.Surface((100, 100))
         
         # Text fields for color values
-        self.text_fields = [
-            TextField(game, groups, position=(80, 500), 
+        # RGB
+        self.rgb_text_fields = [
+            TextField(game, groups, position=(80, 400), 
                       default_text = '255', anchor='topleft'),
-            TextField(game, groups, position=(140, 500), 
+            TextField(game, groups, position=(140, 400), 
                       default_text = '255', anchor='topleft'),
-            TextField(game, groups, position=(200, 500), 
-                      default_text = '255', anchor='topleft'),
+            TextField(game, groups, position=(200, 400), 
+                      default_text = '255', anchor='topleft')
         ]
+        # Hexadecimal
+        self.hex_text_field = TextField(game, groups, position=(80, 500), 
+                                default_text = 'FFFFFF_', anchor='topleft')
         
     
     def update(self, dt):
         self.image.fill(pg.Color('Black'))
         
+        # get the RGB color values from the sliders
         for i, slider in enumerate(self.sliders):
-            self.color_value[i] = int(slider.value * 255)
+            self.color_value[i] = round(slider.value * 255)
             if slider.held:
-                self.text_fields[i].highlighted = False
+                # disable all text fields
+                self.rgb_text_fields[i].highlighted = False
+                self.hex_text_field.highlighted = False
         
-        for i, field in enumerate(self.text_fields):
+        for i, field in enumerate(self.rgb_text_fields):
             # if highlighted, get inputs from the user
             if field.highlighted:
                 # deactivate all other text fields:
-                others = [o for o in self.text_fields if o != field]
+                # TODO: does not work properly!
+                others = [o for o in self.rgb_text_fields if o != field]
                 for other in others:
                     other.highlighted = False
                 
+                # change the field's text based on user input
                 for event in self.game.event_queue:
                     if event.type == pg.KEYDOWN:
                         char = chr(event.key)
+                        # only allow digits
                         if char in '1234567890':
-                            field.text += chr(event.key)
+                            field.text += char
                         elif event.key == pg.K_BACKSPACE:
+                            # backspace delete the last character
                             field.text = field.text[:-1]
+                        elif event.key == pg.K_RETURN:
+                            # Enter key deactivates the text field
+                            field.highlighted = False
                 if field.text:
-                    self.color_value[i] = constrain(int(field.text), 0, 255)
+                    # if the user put some text, constrain it to be within
+                    # 0 and 255 (allowed color values)
+                    self.color_value[i] = constrain(round(float(field.text)), 0, 255)
                     field.text = f'{self.color_value[i]}'
-                    #self.sliders[i].set_value(self.color_value[i])
-                    self.sliders[i].value = self.color_value[i]
+                    self.sliders[i].value = self.color_value[i] / 255
             else:
                 field.text = f'{self.color_value[i]}'
         
@@ -82,57 +130,118 @@ class ColorPicker(pg.sprite.Sprite):
         pg.draw.rect(self.image, pg.Color('white'), (80, 250, 100, 100), 1)
         
         font = self.game.fonts['arial']
-        txt, rect = font.render('Pick a Color',
-                                fgcolor=pg.Color('white'),
-                                size=64)
-        rect.centerx = self.rect.centerx
-        rect.y = 20
-        self.image.blit(txt, rect)
         
-        txt, rect = font.render('Preview:',
-                                fgcolor=pg.Color('white'),
-                                size=32)
-        rect.topleft = (80, 200)
-        self.image.blit(txt, rect)
-
-        rgb_text = f'RGB value: {tuple(self.color_value)}'
-        txt, rect = font.render(rgb_text,
-                                fgcolor=pg.Color('white'),
-                                size=28)
-        rect.topleft = (80, 360)
-        self.image.blit(txt, rect)
+        # define some text labels and their attributes
+        texts = {
+            'Pick a Color': {
+                'fgcolor': pg.Color('white'),
+                'size': 64,
+                'position': (self.rect.centerx, 20),
+                'anchor': 'midtop'
+                },
+            'Preview': {
+                'fgcolor': pg.Color('white'),
+                'size': 32,
+                'position': (80, 200),
+                'anchor': 'topleft'
+                },
+            'RGB value:': {
+                'fgcolor': pg.Color('white'),
+                'size': 28,
+                'position': (80, 360),
+                'anchor': 'topleft'
+                },
+            'Hex value:': {
+                'fgcolor': pg.Color('white'),
+                'size': 28,
+                'position': (80, 460),
+                'anchor': 'topleft'
+                }
+            }
         
-        rgb_text = f'Hex value: {rgb_to_hex(self.color_value)}'
-        txt, rect = font.render(rgb_text,
-                                fgcolor=pg.Color('white'),
-                                size=28)
-        rect.topleft = (80, 400)
-        self.image.blit(txt, rect)
+        for text, attributes in texts.items():
+            txt, rect = font.render(text,
+                                    fgcolor=attributes['fgcolor'],
+                                    size=attributes['size'])
+            setattr(rect, attributes['anchor'], attributes['position'])
+            self.image.blit(txt, rect)
+        
+        # update hex input field
+        field = self.hex_text_field
+        if field.highlighted:
+            for rgb_field in self.rgb_text_fields:
+                rgb_field.highlighted = False
+                
+            for event in self.game.event_queue:
+                if event.type == pg.KEYDOWN:
+                    char = chr(event.key).upper()
+                    if char in '1234567890ABCDEF' and len(field.text) < 6:
+                        field.text += char
+                    elif event.key == pg.K_BACKSPACE:
+                        field.text = field.text[:-1]
+                    elif event.key == pg.K_RETURN:
+                        field.highlighted = False
+            if len(field.text) == 6:
+                self.color_value = list(pg.Color('#' + field.text))[:3]
+                for i, slider in enumerate(self.sliders):
+                    slider.value = self.color_value[i] / 255
+        else:
+            field.text = rgb_to_hex(self.color_value)
 
 
 
 class Slider(pg.sprite.Sprite):
-    # TODO: to avoid floating point values, store the pct value
-    # and blit the slider according to that
+    """Customizable graphical slider element that can be dragged with the 
+    mouse to receive a value between 0 and 1.
+    
+    """
     def __init__(self, game, groups, pos, text):
+        """
+        Args:
+            game (Game): instance of a Game object.
+            groups (pygame.sprite.Group)
+            pos (tuple, list or pygame.Vector2): position (topleft) of the 
+                                                slider's rect
+            text (str): title of the slider (displayed at the topleft)
+
+        Returns:
+            None.
+        """
         super().__init__(groups)
         self.game = game
         self.pos = vec(pos)
         self.text = text
-        self.image = pg.Surface((200, 80), flags=pg.SRCALPHA)
+        self.image = pg.Surface((256, 80), flags=pg.SRCALPHA)
         self.image.fill((0, 0, 0, 0))
         self.rect = self.image.get_rect()
-        self.rect.topleft = self.pos
-        self.slider_rect = pg.Rect((0, 40), (20, 20))
-        self.held = False
+        self.rect.topleft = (int(self.pos[0]), int(self.pos[1]))
+        
+        self.value = 0  # float between 0 and 1
+        self.slider_rect = pg.Rect((0, 0), (20, 20))
+        self.slider_rect.y = self.rect.h // 2
+        self.held = False  # flag to indicate if the slider is dragged by the mouse
         
         font = self.game.fonts['arial']
         self.text_surf, _ = font.render(text,
                                    fgcolor=pg.Color(text),
                                    size=32)
         
+        # maximum distance from mouse to slider rect center for click detection
         self.mouse_distance = 40
+        # thickness of the slider bar
         self.line_thickness = 10
+    
+    
+    def value_to_x(self):
+        # converts self.value (percentage) to the slider position
+        return (self.value * (self.rect.w - self.slider_rect.w) 
+                + self.slider_rect.w * 0.5)
+
+    
+    def x_to_value(self):
+        # converts the slider position to a percentage value
+        return ((self.slider_rect.centerx - self.slider_rect.w * 0.5) / 
+                (self.rect.w - self.slider_rect.w))
         
     
     def update(self, dt):
@@ -148,10 +257,14 @@ class Slider(pg.sprite.Sprite):
             
         if self.held:
             # change the sliders x value based on mouse x position
-            self.slider_rect.centerx = m_pos.x - self.pos.x
+            self.slider_rect.centerx = round(m_pos.x - self.pos.x)
+        else:
+            self.slider_rect.centerx = self.value_to_x()
+
         self.slider_rect.centerx = constrain(self.slider_rect.centerx, 
                         self.slider_rect.w / 2, 
                         self.rect.w - self.slider_rect.w / 2)
+        self.value = self.x_to_value()  # TODO: no rounding error if this is commented out
         
         # construct the slider's image
         # fill with transparent color
@@ -169,48 +282,36 @@ class Slider(pg.sprite.Sprite):
                      (self.rect.w, self.slider_rect.centery), 
                      self.line_thickness)
         # draw the slider element
-        #self.draw_button(self.image, self.slider_rect)
-        self.draw_box(self.image, self.slider_rect)
+        self.draw_button(self.image, self.slider_rect)
         # draw the slider's title
         self.image.blit(self.text_surf, (0, 6))
-        
+
     
     def draw_button(self, surface, rect):
-        # draws a pretty button
-        rect_off = rect.copy()
-        rect_off.y -= 3
-        pg.draw.ellipse(surface, pg.Color('darkgrey'), rect)
-        pg.draw.ellipse(surface, pg.Color('white'), rect_off)
-    
-    
-    def draw_box(self, surface, rect):
         # draws a rectangular button
         rect_off = rect.copy()
         rect_off.y -= 3
         pg.draw.rect(surface, pg.Color('darkgrey'), rect)
         pg.draw.rect(surface, pg.Color('white'), rect_off)
-     
-    
-    @property
-    def value(self):
-        # returns a value between 0 and 1, calculated from the slider's position
-        return ((self.slider_rect.centerx - self.slider_rect.w * 0.5) / 
-                (self.rect.w - self.slider_rect.w))
 
-    
-    @value.setter
-    def value(self, value):
-        pct_value = value / 255
-        self.slider_rect.centerx = (pct_value * 
-                                    (self.rect.w - self.slider_rect.w) 
-                                    + self.slider_rect.w * 0.5)
-    
+
 
 class TextField(pg.sprite.Sprite):
     def __init__(self, game, groups, position, anchor='center', 
                  default_text='Hello World', 
                  text_size=32,
                  text_color='Black'):
+        """
+        Args:
+            default_text (str, optional): Default text that defines the
+                element's size. Defaults to 'Hello World'.
+            text_size (int, optional): Font height in pixels. Defaults to 32.
+            text_color (str, optional): Defaults to 'Black'.
+
+        Returns:
+            None.
+
+        """
         super().__init__(groups)
         self.game = game
         self.text_size = text_size
@@ -226,12 +327,12 @@ class TextField(pg.sprite.Sprite):
         self.image = pg.Surface(self.rect.size)
         self.color = pg.Color('white')
         
+        # flag indicating if the text field can be edited
         self.highlighted = False
-        self.highlighted_before = False
         
     
     def update(self, dt):
-        # check if mouse is on field
+        # check if mouse is on the field's rect
         m_pos = vec(pg.mouse.get_pos())
         if self.rect.collidepoint(m_pos):
             for event in self.game.event_queue:
@@ -287,6 +388,13 @@ class Game:
     
     def draw(self):
         self.all_sprites.draw(self.screen)
+        
+# =============================================================================
+#         # TODO: for debugging
+#         for s in self.all_sprites:
+#             pg.draw.rect(self.screen, pg.Color('red'), s.rect, 1)
+# =============================================================================
+        
         pg.display.update()
         
         
