@@ -82,6 +82,29 @@ class ColorPicker(pg.sprite.Sprite):
         self.hex_text_field = TextField(game, groups, position=(80, 500), 
                                 default_text = 'FFFFFF_', anchor='topleft')
         
+        # buttons that lock the RGB sliders
+        self.lock_buttons = [
+            Button(game, groups, 
+                   (self.sliders[0].rect.right + 10, 
+                    self.sliders[0].rect.centery), anchor='midleft',
+                   text='Lock', 
+                   callback=lambda: self.toggle_slider_active(0)),
+            Button(game, groups, 
+                   (self.sliders[1].rect.right + 10, 
+                    self.sliders[1].rect.centery), anchor='midleft',
+                   text='Lock', 
+                   callback=lambda: self.toggle_slider_active(1)),
+            Button(game, groups, 
+                   (self.sliders[2].rect.right + 10, 
+                    self.sliders[2].rect.centery), anchor='midleft',
+                   text='Lock', 
+                   callback=lambda: self.toggle_slider_active(2))
+            ]
+    
+    
+    def toggle_slider_active(self, i):
+        self.sliders[i].active = not self.sliders[i].active
+        
     
     def update(self, dt):
         self.image.fill(pg.Color('Black'))
@@ -89,6 +112,15 @@ class ColorPicker(pg.sprite.Sprite):
         # get the RGB color values from the sliders
         for i, slider in enumerate(self.sliders):
             self.color_value[i] = round(slider.value * 255)
+            if slider.active:
+                # check for other locked sliders
+                change = slider.value - slider.previous_value
+                if change != 0:
+                    others = [o for o in self.sliders if o != slider]
+                    for other in others:
+                        if not other.active:
+                            other.value = constrain(other.value + change, 0, 1)
+            
             if slider.held:
                 # disable all text fields
                 self.rgb_text_fields[i].highlighted = False
@@ -217,6 +249,7 @@ class Slider(pg.sprite.Sprite):
         self.rect.topleft = (int(self.pos[0]), int(self.pos[1]))
         
         self.value = 0  # float between 0 and 1
+        self.previous_value = 0
         self.slider_rect = pg.Rect((0, 0), (20, 20))
         self.slider_rect.y = self.rect.h // 2
         self.held = False  # flag to indicate if the slider is dragged by the mouse
@@ -230,6 +263,8 @@ class Slider(pg.sprite.Sprite):
         self.mouse_distance = 40
         # thickness of the slider bar
         self.line_thickness = 10
+        
+        self.active = True
     
     
     def value_to_x(self):
@@ -245,11 +280,12 @@ class Slider(pg.sprite.Sprite):
         
     
     def update(self, dt):
+        self.previous_value = self.value
         # calculate if mouse is on slider
         m_pos = vec(pg.mouse.get_pos())
         s_pos = self.pos + self.slider_rect.center
         # check if left mouse is pressed and within range to the slider
-        if pg.mouse.get_pressed()[0]:
+        if pg.mouse.get_pressed()[0] and self.active:
             if s_pos.distance_to(m_pos) < self.mouse_distance:
                 self.held = True
         else:
@@ -356,6 +392,49 @@ class TextField(pg.sprite.Sprite):
             self.text_rect.center = (self.rect.w / 2, self.rect.h / 2)
             self.image.blit(self.text_surf, self.text_rect)
 
+
+class Button(pg.sprite.Sprite):
+    def __init__(self, game, groups, position, anchor='center', 
+                 text='Hello World', 
+                 text_size=32,
+                 text_color='Black',
+                 bg_color='White',
+                 highlight_color='darkgrey',
+                 callback=None):
+        super().__init__(groups)
+        self.game = game
+        font = self.game.fonts['arial']
+        self.text_surf, self.text_rect = font.render(text,
+                                            fgcolor=pg.Color(text_color),
+                                            size=text_size)
+        self.rect = self.text_rect.inflate(10, 10)
+        setattr(self.rect, anchor, position)
+        self.text_rect.center = (self.rect.w / 2, self.rect.h / 2)
+        self.image = pg.Surface(self.rect.size)
+        self.bg_color = pg.Color(bg_color)
+        self.highlight_color = pg.Color(highlight_color)
+        
+        # flag indicating if the text field can be edited
+        self.pressed = False
+        
+        self.callback = callback
+
+
+    def update(self, dt):
+        # check if mouse is on the field's rect
+        m_pos = vec(pg.mouse.get_pos())
+        if self.rect.collidepoint(m_pos):
+            for event in self.game.event_queue:
+                if event.type == pg.MOUSEBUTTONDOWN:
+                    self.pressed = not self.pressed
+                    if self.callback:
+                        self.callback()
+        
+        self.image.fill(self.highlight_color if self.pressed 
+                        else self.bg_color)
+        self.image.blit(self.text_surf, self.text_rect)
+        
+        
 
 class Game:
     def __init__(self):
