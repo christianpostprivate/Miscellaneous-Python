@@ -154,7 +154,7 @@ class Logger:
                 row = [timestamp, logtime, temperature_c, humidity]
                 # append to the deque
                 self.storage.append(row)
-                # indicate a successfull read and activate the green LED
+                # indicate a successfull read
                 self.read_successfull = True
             except RuntimeError as error:
                 if ('Timed out waiting for PulseIn message' in error.args[0]
@@ -169,7 +169,7 @@ class Logger:
     
     
     def mainloop(self):
-        # start the thread that receives data from the dht11
+        # start the thread that receives data from the dht
         tk_thread = threading.Thread(target=lambda: self.read_dht22(1))
         tk_thread.start()
         
