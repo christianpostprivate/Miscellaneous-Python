@@ -146,7 +146,7 @@ class Logger:
         while not self.should_stop.wait(interval):
             self.read_successfull = False
             try:
-                # Print the values to the console
+                # construct a row for the csv file
                 temperature_c = self.device.temperature
                 humidity = self.device.humidity
                 timestamp = datetime.timestamp(datetime.now())
